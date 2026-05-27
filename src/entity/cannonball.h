@@ -109,6 +109,8 @@ class clsCannonball {
 
     dblXY forces_; /**< Forces on the ball in x and y */
     bool paused_; /**< If the simulation is paused or not.  */
+    uint pathUpdateCounter_; /**< Frames elapsed since the last path point was recorded. */
+    uint pathHead_;          /**< Next write index into the circular path_ buffer. */
 
     void show(void);
     void drawPath(LOC);

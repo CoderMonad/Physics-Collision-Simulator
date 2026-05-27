@@ -1,6 +1,8 @@
 /*****************************************************************************/
 #include "core.h"
 #include "../entity/rope.h"
+#include <algorithm>
+#include <cmath>
 /*****************************************************************************/
 /////////////////////////////////////////////////
 /// @file core.cpp
@@ -39,6 +41,8 @@ void cannonballs::addNew(LOC mouseC, LOC mouseO, double HoldTime ) {
   double fire_v;
   double angle;
   double radius = (double)global::equations::kTimeSizeRatio * cbrt(log(HoldTime+1));
+  if (radius < global::equations::kRadiusMin) { radius = global::equations::kRadiusMin; }
+  if (radius > global::equations::kRadiusMax) { radius = global::equations::kRadiusMax; }
 
   fire_v = -1 * sqrt( pow(mouseC.x - mouseO.x, 2) + pow(mouseC.y - mouseO.y, 2) );
   fire_v *= (double) global::equations::kVelocityScalar;
@@ -72,11 +76,11 @@ void cannonballs::checkCollisons(uint j) {
   /// @param  j = the number in the array that ball we are checking is.
   /// @return void (all changes if they are colliding is handled in this function).
   ///
+  // TODO: Function name is misspelled ("Collisons" → "Collisions"). Rename to checkCollisions
+  //       here, in core.h, and at all call sites.
   /////////////////////////////////////////////////
 
   BOX A, B;
-  dblXY ball_a_loc;
-  dblXY ball_b_loc;
   A = balls[j].getBOX();
   if (balls[j].blncheckphysics_) {
     for (int i = 0; i < balls.size(); ++i) {
@@ -84,31 +88,44 @@ void cannonballs::checkCollisons(uint j) {
         B = balls[i].getBOX();
         if ( checkOverlap(A, B) ) {
           doCollide(j, i);
-          /** @todo (GamerMan7799#3#): This might work for stopping the balls from overlapping, just need to add a check on which way they are colliding */
-#if DEFINED_PUSH_BALLS_OUT_OF_OVERLAP == 1
-           ball_a_loc = balls[j].getdbLOC();
-           ball_b_loc = balls[i].getdbLOC();
-           do {
-              if (A.right <= B.right && A.right >= B.left) {
-                ball_a_loc.x--;
-                ball_b_loc.x++;
-              } else if (A.left >= B.left && A.left <= B.right) {
-                ball_a_loc.x++;
-                ball_b_loc.x--;
-              }
-              if (A.top >= B.top && A.top <= B.bottom) {
-                ball_a_loc.y++;
-                ball_b_loc.y--;
-              } else if (A.bottom >= B.top && A.bottom <= B.bottom) {
-                ball_a_loc.y--;
-                ball_b_loc.y++;
-              }
-            balls[i].setdbLOC(ball_b_loc);
-            balls[j].setdbLOC(ball_a_loc);
-            A = balls[j].getBOX();
-            B = balls[i].getBOX();
-          } while (checkOverlap(A,B));
-#endif
+          // Push balls apart along their centre-to-centre axis so they no longer
+          // overlap, preventing the same collision from re-triggering next frame.
+          if (balls[i].blnstarted_) {
+            int cx_j = (A.left + A.right)  / 2;
+            int cy_j = (A.top  + A.bottom) / 2;
+            int r_j  = (A.right - A.left)  / 2;
+            int cx_i = (B.left + B.right)  / 2;
+            int cy_i = (B.top  + B.bottom) / 2;
+            int r_i  = (B.right - B.left)  / 2;
+
+            int    dx   = cx_j - cx_i;
+            int    dy   = cy_j - cy_i;
+            double dist = sqrt((double)(dx * dx + dy * dy));
+
+            double nx, ny, penetration;
+            if (dist > 0.5) {
+              nx          = dx / dist;
+              ny          = dy / dist;
+              penetration = (r_j + r_i) - dist;
+            } else {
+              // Degenerate: centres coincide — use horizontal fallback.
+              nx = 1.0; ny = 0.0;
+              penetration = r_j + r_i;
+            }
+
+            if (penetration > 0) {
+              // Convert pixel separation to physics units; +1 px buffer ensures
+              // checkOverlap() returns false on the next frame.
+              double sep = (penetration + 1.0) / 2.0 / global::physics::kMeterPixelRatio;
+              dblXY locJ = balls[j].getdbLOC();
+              dblXY locI = balls[i].getdbLOC();
+              // nx/ny are SDL screen-space (y-down); negate ny for physics (y-up).
+              locJ.x += sep * nx;  locJ.y -= sep * ny;
+              locI.x -= sep * nx;  locI.y += sep * ny;
+              balls[j].setdbLOC(locJ);
+              balls[i].setdbLOC(locI);
+            }
+          }
           balls[i].blncheckphysics_ = false;
           balls[j].blncheckphysics_ = false;
         } // end if overlap
@@ -119,32 +136,40 @@ void cannonballs::checkCollisons(uint j) {
 /*****************************************************************************/
 bool cannonballs::checkOverlap(BOX A, BOX B) {
   /////////////////////////////////////////////////
-  /// @brief Checks if two boxes overlap
+  /// @brief Checks if two circular balls overlap using a two-phase approach.
+  ///        Phase 1 (broadphase): fast AABB rejection — returns false immediately
+  ///        if the bounding boxes are completely separated on any axis.
+  ///        Phase 2 (narrowphase): pixel-accurate circle distance check —
+  ///        computes centre positions and radii from the bounding boxes and
+  ///        tests whether the circles actually intersect.
   ///
   /// @param A = Box for ball A
   /// @param B = Box for ball B
-  /// @return TRUE / FALSE if they overlap and therefore collide
+  /// @return TRUE if the circles overlap, FALSE otherwise
   ///
   /////////////////////////////////////////////////
 
-  /** @todo (GamerMan7799#9#): Improve the overlap check to allow pixel-by-pixel detection */
+  // Broadphase: reject if bounding boxes are completely separated.
+  if (A.right < B.left || B.right < A.left ||
+      A.bottom < B.top  || B.bottom < A.top) {
+    return false;
+  }
 
-  if (A.right <= B.right && A.right >= B.left) {
-      if (A.top >= B.top && A.top <= B.bottom) { return true; }
-      else if (A.bottom >= B.top && A.bottom <= B.bottom) { return true; }
-      else { return false; }
-  } else if (A.left >= B.left && A.left <= B.right) {
-      if (A.top >= B.top && A.top <= B.bottom) { return true; }
-      else if (A.bottom >= B.top && A.bottom <= B.bottom) { return true; }
-      else { return false; }
-  } else { return false; }
+  // Narrowphase: pixel-accurate circle distance check.
+  // Derive centre and radius in pixels from the bounding box.
+  long long cx_A = (A.left + A.right)  / 2;
+  long long cy_A = (A.top  + A.bottom) / 2;
+  long long r_A  = (A.right - A.left)  / 2;
 
-  /*if( A.right < B.left ){ return false; }
-  if( A.left > B.right ){ return false; }
-  if( A.bottom < B.top ){ return false; }
-  if( A.top > B.bottom ){ return false; }
+  long long cx_B = (B.left + B.right)  / 2;
+  long long cy_B = (B.top  + B.bottom) / 2;
+  long long r_B  = (B.right - B.left)  / 2;
 
-  return true;*/
+  long long dx     = cx_A - cx_B;
+  long long dy     = cy_A - cy_B;
+  long long radSum = r_A  + r_B;
+
+  return (dx * dx + dy * dy) <= (radSum * radSum);
 }
 /*****************************************************************************/
 void cannonballs::doCollide(uint numA, uint numB) {
@@ -160,21 +185,20 @@ void cannonballs::doCollide(uint numA, uint numB) {
 
   dblXY Avel, Bvel;
   PP Aprops, Bprops;
-
+  LOC CenterA, CenterB;
 
   Avel = balls[numA].getVelocity();
   Bvel = balls[numB].getVelocity();
   Aprops = balls[numA].getPhysicalProps();
   Bprops = balls[numB].getPhysicalProps();
+  CenterA = balls[numA].getplace();
+  CenterB = balls[numB].getplace();
 
 #if DEFINED_USE_R2_VEL_MODDER == 1
   //This part here has no actual basis on real life,
   //it is just my attempt at preventing the cannonballs from sticking together
-  LOC CenterA, CenterB, DeltaCenters;
+  LOC DeltaCenters;
   double VelModder;
-  CenterA = balls[numA].getplace();
-  CenterB = balls[numB].getplace();
-
   DeltaCenters.x = abs(CenterA.x - CenterB.x);
   DeltaCenters.y = abs(CenterA.y - CenterB.y);
   //Since it is r^2 and the sqrt of this give us r, we just drop the sqrt part to save time
@@ -216,7 +240,10 @@ void cannonballs::doCollide(uint numA, uint numB) {
     Bangle += Bvel.x < 0.0 ? M_PI : 0;
     //The contact angle has to be the difference between the two angles but
     //since sometimes one or the other is negative, we'll use abs to ensure the right number
-    ContactAngle = abs ( abs(Aangle) - abs(Bangle) );
+    // ContactAngle is the angle of the centre-to-centre normal in physics-space
+    // (y-up). getplace() returns screen-space (y-down), so y is negated.
+    ContactAngle = atan2((double)(CenterA.y - CenterB.y),
+                         (double)(CenterB.x - CenterA.x));
 
     TotalAMomentum.x = Atotal_v * cos(Aangle - ContactAngle) *
                       (Aprops.mass - Bprops.mass);
@@ -275,8 +302,10 @@ void cannonballs::doCollide(uint numA, uint numB) {
 
     TotalAMomentum = math::vectorMul(TotalAMomentum,
                                     (double)global::physics::kCoefficientRestitution);
-    TotalBMomentum = math::vectorMul(TotalAMomentum,
+    TotalBMomentum = math::vectorMul(TotalBMomentum,
                                     (double)global::physics::kCoefficientRestitution);
+    // TODO: Add [[fallthrough]] annotation (C++17) or a comment to make the intentional
+    //       fall-through to CollideElastic explicit and silence compiler warnings.
   case CollideElastic:
     //The balls collide and bounce away from each other
 
@@ -317,36 +346,31 @@ void cannonballs::clean_up() {
   /// @brief Removes any "dead" balls/rope from the balls/rope vector and
   ///        shrinks it to reduce memory usage
   /////////////////////////////////////////////////
-  int new_cannon_num = 0; // keeps track of the number of valid balls found
 
-  for(int i = 0; i < intCannonBallNum; ++i) {
-    if ( !(balls[i].blnstarted_) ) {
-      balls.erase(balls.begin()+i);
-    } else { new_cannon_num++; }
-  }
+  balls.erase(std::remove_if(balls.begin(), balls.end(),
+                             [](const clsCannonball& b){ return !b.blnstarted_; }),
+              balls.end());
 
   if (global::blnDebugMode) {
     printf("Clean up has been run.\n");
-    printf("%3i balls have been cleared\n",intCannonBallNum-new_cannon_num);
-    printf("%3i balls remain\n",new_cannon_num);
+    printf("%3i balls have been cleared\n", intCannonBallNum - (int)balls.size());
+    printf("%3i balls remain\n", (int)balls.size());
   }
-  intCannonBallNum = new_cannon_num;
+  intCannonBallNum = (int)balls.size();
   if(!balls.empty()) { balls.shrink_to_fit(); }
 
 
-  int new_rope_num = 0; // keeps track of the number of valid ropes found
 
-  for(int i = 0; i < intRopeNum; ++i) {
-    if ( !(ropes[i].blncheckphysics_) ) {
-      ropes.erase(ropes.begin()+i);
-    } else { new_rope_num++; }
-  }
+
+  ropes.erase(std::remove_if(ropes.begin(), ropes.end(),
+                             [](const clsRope& r){ return !r.blncheckphysics_; }),
+              ropes.end());
 
   if (global::blnDebugMode) {
-    printf("%3i ropes have been cleared\n",intRopeNum-new_rope_num);
-    printf("%3i ropes remain\n",new_rope_num);
+    printf("%3i ropes have been cleared\n", intRopeNum - (int)ropes.size());
+    printf("%3i ropes remain\n", (int)ropes.size());
   }
-  intRopeNum = new_rope_num;
+  intRopeNum = (int)ropes.size();
   if(!ropes.empty()) { ropes.shrink_to_fit(); }
 }
 /*****************************************************************************/
@@ -460,7 +484,7 @@ char core::handleEvent(SDL_Event* e ) {
       core::toolbar.setTool(ToolDrop);
       return 0;
     case SDLK_3:
-      //core::toolbar.setTool(ToolRope);
+      core::toolbar.setTool(ToolRope);
       return 0;
     case SDLK_4:
       core::toolbar.setTool(ToolDele);

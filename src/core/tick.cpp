@@ -1,9 +1,6 @@
 /*****************************************************************************/
 #include "tick.h"
 /*****************************************************************************/
-#include <cstdio>
-#include <cstdlib>
-/*****************************************************************************/
 /////////////////////////////////////////////////
 /// @file tick.cpp
 /// @brief Holds functions for timey wimey stuff
@@ -14,7 +11,7 @@ clsTick::clsTick() {
   /// @brief Default constructor, just sets lngTimerStart to now
   /////////////////////////////////////////////////
 
-	lngTimerStart = clock();
+	lngTimerStart = std::chrono::steady_clock::now();
 }
 /*****************************************************************************/
 void clsTick::startTimer() {
@@ -22,7 +19,7 @@ void clsTick::startTimer() {
   /// @brief Sets lngTimerStart to now.
   /////////////////////////////////////////////////
 
-  lngTimerStart = clock();
+  lngTimerStart = std::chrono::steady_clock::now();
 }
 /*****************************************************************************/
 double clsTick::getTimeDifference() {
@@ -31,17 +28,17 @@ double clsTick::getTimeDifference() {
   /// @return Time in Seconds
   /////////////////////////////////////////////////
 
-  double temp_time = (double)(((double)clock() - (double)lngTimerStart)
-                              / (double)CLOCKS_PER_SEC);
+  auto now = std::chrono::steady_clock::now();
+  double temp_time = std::chrono::duration<double>(now - lngTimerStart).count();
   startTimer();
   return temp_time;
 }
 /*****************************************************************************/
 void clsTick::startHolding() {
   /////////////////////////////////////////////////
-  /// @brief Sets lngTimerStart to now.
+  /// @brief Sets lngHoldingStart to now.
   /////////////////////////////////////////////////
-  lngHoldingStart = clock();
+  lngHoldingStart = std::chrono::steady_clock::now();
 }
 /*****************************************************************************/
 double clsTick::stopHolding() {
@@ -50,7 +47,7 @@ double clsTick::stopHolding() {
   /// @return Time in Seconds
   /////////////////////////////////////////////////
 
-  return (double)(((double)clock() - (double)lngHoldingStart)
-                  / (double)CLOCKS_PER_SEC);
+  auto now = std::chrono::steady_clock::now();
+  return std::chrono::duration<double>(now - lngHoldingStart).count();
 }
 /*****************************************************************************/

@@ -4,7 +4,7 @@
 /// @brief      Holds all the main functions.
 /// @author     GamerMan7799
 /// @author     xPUREx
-/// @version    1.4.2-beta.3
+/// @version    1.5.0-alpha.3
 /// @date       2015-2021
 /// @copyright  Public Domain Unlicense.
 /////////////////////////////////////////////////
@@ -14,7 +14,6 @@
                             time passes between updates, causing the balls to "collide"
                             again, and each time losing more energy.*/
 /** @todo (GamerMan7799#8#): Allow setting of some Physics Values in Config */
-/** @todo (GamerMan7799#8#): Set Max/Min values for mass? */
 /*****************************************************************************/
 #include "version.h"
 #include "core/core.h"
@@ -42,13 +41,13 @@ namespace global {
                                              See https://en.wikipedia.org/wiki/Drag_coefficient for more info. */
     const float kKineticFriction = 0.36; /**< Kinetic Friction values based on Concrete and Steel */
     const float kDensityAir = 1.2041; /**< Density of air (in kg/m<sup>3</sup>)  \n
-                                           This value is based on air at 20ºC and 101.325 kPa \n
+                                           This value is based on air at 20ï¿½C and 101.325 kPa \n
                                            See https://en.wikipedia.org/wiki/Density_of_air for more info */
     const float kMinVelocity = 0.0; /**< If a ball has less velocity than the it will "die" */
     const float kCoefficientRestitution = 0.76; /**< How much total energy remains after a collision,
                                                     (see https://en.wikipedia.org/wiki/Coefficient_of_restitution for more info) */
     uchar collisionmethod = CollideInelastic; /**< The collision method to use (see Collisions Enum) */
-    const double kAirDynViscosity = 2.22043 * pow(10,-5); /**< dynamic viscosity of air at 20°C */
+    const double kAirDynViscosity = 2.22043 * pow(10,-5); /**< dynamic viscosity of air at 20ï¿½C */
   } //end Namespace Physics
 
   /** Holds Values for different equations that are not physics related */
@@ -59,6 +58,8 @@ namespace global {
     const float kTimeSizeRatio = 0.072; /**< One second of holding down
                                                 the mouse button = this many
                                                 meters for the ball */
+    const float kRadiusMin = 0.01f; /**< Minimum ball radius in meters (prevents near-zero mass) */
+    const float kRadiusMax = 0.20f; /**< Maximum ball radius in meters */
     const float kMassAlphaRatio = 83.166; /**< The ratio between mass and its
                                                 alpha (transparent) value. \n
                                                 The equation used is Global::Equations::kMassAlphaRatio
@@ -98,7 +99,7 @@ int main(int argc, char *argv[]) {
   SDL_Event event;
 
   uint ticks_since_clean = 0;
-  char event_return;
+  char event_return = 0;
 
   do {
     core::cannonwindow.clearscreen(); //Clear the screen so new stuff can be drawn
@@ -123,19 +124,19 @@ int main(int argc, char *argv[]) {
     }
 
     tempdeltat = core::tick.getTimeDifference(); // get the delta time
-    for (int i = 0; i < cannonballs::balls.size(); ++i) {
+    for (size_t i = 0; i < cannonballs::balls.size(); ++i) {
       // Just update the forces for now.
       if (cannonballs::balls[i].blnstarted_) { cannonballs::balls[i].updateForces(); } //end if started
     } //end for loop
 
-    for (int i = 0; i < cannonballs::ropes.size(); ++i) {
+    for (size_t i = 0; i < cannonballs::ropes.size(); ++i) {
       //Loop through each rope
       // forces are updated first so they are pulled correctly
       // into the rope functions.
       cannonballs::ropes[i].update();
     } //end for loop
 
-    for (int i = 0; i < cannonballs::balls.size(); ++i) {
+    for (size_t i = 0; i < cannonballs::balls.size(); ++i) {
       //Loop through each cannonball
       if (cannonballs::balls[i].blnstarted_) {
         //only update cannonball if it is "alive"

@@ -69,7 +69,36 @@ void clsRope::update() {
         balls_.two->addForce(tension);
       } else {
         // rope attached to two balls
+        ball_one_forces = balls_.one->getForces();
+        ball_two_forces = balls_.two->getForces();
+        PP props1 = balls_.one->getPhysicalProps();
+        PP props2 = balls_.two->getPhysicalProps();
 
+        // Unit vector from ball 1 to ball 2 in screen space (y-down).
+        // Negate y to convert to physics space (y-up), where forces live.
+        double dx = (double)(spot_.two.x - spot_.one.x);
+        double dy = (double)(spot_.two.y - spot_.one.y);
+        double dist = sqrt(dx * dx + dy * dy);
+
+        if (dist >= 0.5) {
+          dblXY n_phys = {dx / dist, -dy / dist};
+
+          // Project each ball's net force onto the rope axis (physics space).
+          double f1_along = ball_one_forces.x * n_phys.x + ball_one_forces.y * n_phys.y;
+          double f2_along = ball_two_forces.x * n_phys.x + ball_two_forces.y * n_phys.y;
+
+          // Inextensible-constraint tension: T = (m1*F2_along - m2*F1_along)/(m1+m2).
+          // Derived from (a1 - a2)·n̂ = 0 with T applied along n̂.
+          // Clamp to 0 — rope can pull but not push.
+          // Note: this force-only model doesn't include centripetal or velocity-level
+          // correction terms, consistent with the ball-wall rope implementation.
+          double T = (props1.mass * f2_along - props2.mass * f1_along) /
+                     (props1.mass + props2.mass);
+          if (T > 0.0) {
+            balls_.one->addForce({  T * n_phys.x,  T * n_phys.y });
+            balls_.two->addForce({ -T * n_phys.x, -T * n_phys.y });
+          }
+        }
       }
     }
     draw();
@@ -85,7 +114,7 @@ void clsRope::activate() {
   blncheckphysics_ = true;
   update_spots();
 
-  length_ = (uint)math::getVectorLength(math::vectorSub(spot_.one,spot_.two));
+  length_ = math::getVectorLength(math::vectorSub(spot_.one,spot_.two));
   draw();
 }
 /*****************************************************************************/
@@ -132,16 +161,65 @@ void clsRope::setAttachment(uchar num, clsCannonball* new_ball) {
 /*****************************************************************************/
 void clsRope::draw() {
   /////////////////////////////////////////////////
-  /// @brief Draws the rope
+  /// @brief Draws the rope as a gravity-sagging catenary curve.
+  ///        When the rope is slack the midpoint droops downward using a
+  ///        quadratic Bezier parabolic approximation of a catenary.
   /////////////////////////////////////////////////
 
-  // Yay for reusing old code.
-  /** @bug (GamerMan7799#9#): Rope will only draw a straight line from its two points.
-      Meaning that if the location of the two spots is less than the length, the rope
-      just looks shorter instead of curving like it should. I may or may not
-      try to fix this.  */
+  LOC A = spot_.one;
+  LOC B = spot_.two;
 
-  core::cannonwindow.drawline(spot_.one,spot_.two);
+  double dx = (double)(B.x - A.x);
+  double dy = (double)(B.y - A.y);
+  double span = sqrt(dx * dx + dy * dy);
+
+  double slack = (span < length_) ? (length_ - span) : 0.0;
+
+  if (span < 1.0 || slack <= 0.0) {
+    // Taut rope or degenerate (endpoints on top of each other): straight line.
+    core::cannonwindow.drawline(A, B);
+    return;
+  }
+
+  // Gravity in SDL screen space is (0, +1) (y increases downward).
+  // Find the component of gravity perpendicular to the rope chord — this is
+  // the direction the rope sags toward.
+  dblXY u = {dx / span, dy / span};
+  double g_along = u.y;  // dot({0,1}, u)
+  dblXY g_perp = {-g_along * u.x, 1.0 - g_along * u.y};
+  double g_perp_len = sqrt(g_perp.x * g_perp.x + g_perp.y * g_perp.y);
+
+  dblXY sag_dir;
+  if (g_perp_len < 0.001) {
+    // Rope is nearly vertical: gravity is along the rope, no natural perp.
+    // Sag horizontally as a fallback so the slack is still visible.
+    sag_dir = {1.0, 0.0};
+  } else {
+    sag_dir = {g_perp.x / g_perp_len, g_perp.y / g_perp_len};
+  }
+
+  // Parabolic sag at midpoint: h = sqrt(3 * span * slack / 8).
+  // For a quadratic Bezier the actual midpoint displacement is half the
+  // control-point offset, so the control point must be placed at 2*h.
+  double sag = sqrt(3.0 * span * slack / 8.0);
+  double ctrl_x = (A.x + B.x) / 2.0 + 2.0 * sag * sag_dir.x;
+  double ctrl_y = (A.y + B.y) / 2.0 + 2.0 * sag * sag_dir.y;
+
+  // Number of segments scales with rope span, clamped to [8, 32].
+  int N = (int)(span / 5.0);
+  if (N < 8)  N = 8;
+  if (N > 32) N = 32;
+
+  LOC prev = A;
+  for (int k = 1; k <= N; ++k) {
+    double t  = (double)k / (double)N;
+    double t1 = 1.0 - t;
+    LOC next;
+    next.x = (int)round(t1*t1*(double)A.x + 2.0*t*t1*ctrl_x + t*t*(double)B.x);
+    next.y = (int)round(t1*t1*(double)A.y + 2.0*t*t1*ctrl_y + t*t*(double)B.y);
+    core::cannonwindow.drawline(prev, next);
+    prev = next;
+  }
 }
 /*****************************************************************************/
 void clsRope::update_spots() {
@@ -156,6 +234,7 @@ void clsRope::update_spots() {
 
   // if attachment one is a ball, update spot
   if (attachments_.two == AttachmentBall) {
+    // TODO: Comment above is a copy-paste error — this block handles attachment TWO, not one.
     if (!(balls_.two->blnstarted_)) {
       blncheckphysics_= false;
       return;
@@ -170,7 +249,13 @@ void clsRope::update_spots() {
 /*****************************************************************************/
 dblXY clsRope::ballWallForces(dblXY ball_one_forces, double angle) {
   dblXY tension;
-  if (angle == M_PI / 2 || angle == 3/2 * M_PI ) {
+  const double kAngleEps = 1e-9;
+  const bool is_vertical   = fabs(angle - M_PI / 2)       < kAngleEps ||
+                              fabs(angle - 3.0 / 2.0 * M_PI) < kAngleEps;
+  const bool is_lower_half = !is_vertical && angle > M_PI && angle < 2 * M_PI;
+  const bool is_upper_half = !is_vertical && angle > 0    && angle < M_PI;
+
+  if (is_vertical) {
     tension.x = 0;
     tension.y = ball_one_forces.y;
     if (!(std::signbit((double)spot_.one.y-(double)spot_.two.y) ^ std::signbit(ball_one_forces.y))) {
@@ -178,10 +263,10 @@ dblXY clsRope::ballWallForces(dblXY ball_one_forces, double angle) {
       // reverse the force for tension
       tension.y *= -1;
     }
-  } else if (angle < 2*M_PI && angle > M_PI) {
+  } else if (is_lower_half) {
     tension.y = ball_one_forces.y;
     tension.x = tension.y / tan(angle);
-  } else if (angle > 0 && angle < M_PI) {
+  } else if (is_upper_half) {
     tension.y = -1 * ball_one_forces.y;
     tension.x = tension.y / tan(angle);
   } else {

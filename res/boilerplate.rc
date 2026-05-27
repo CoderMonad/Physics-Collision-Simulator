@@ -52,7 +52,7 @@ BEGIN
             VALUE "ProductVersion",		DEFINED_VER_FULLVERSION_STRING
 			VALUE "Comments", 			VER_COMMENTS_STR
 #ifdef DEFINED_BUILD_MODE_PRIVATE
-			VALUE "PrivateBuild",		"This is a private build by GamerMan7799, intended for debugging uses."
+			VALUE "PrivateBuild",		"This is a private build by CoderMonad, intended for debugging uses."
 #endif
         END
     END

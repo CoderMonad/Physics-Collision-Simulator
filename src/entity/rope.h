@@ -66,7 +66,7 @@ class clsRope {
       void update_spots(void);
       dblXY ballWallForces(dblXY, double);
 
-      uint length_; /**< Length of the rope. */
+      double length_; /**< Length of the rope in pixels. */
 
       PlacesSpots spot_; /**< Location of attachment spots. */
       AttachSpots attachments_; /**< Type of attachments. */

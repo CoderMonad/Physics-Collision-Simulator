@@ -24,7 +24,7 @@ void clsToolbar::show() {
   SDL_Rect tool_pic_box = {position_.x+2,position_.y+2,24,24};
   SDL_Rect pause_location = {screen::screenatt.width-24,2,24,24};
 
-  pause_location.x + 28;
+  pause_location.x += 28;
 
 
   if(show_toolbox_) { // only show if enabled
@@ -57,7 +57,10 @@ void clsToolbar::incrementTool(char dir) {
   /// @param dir = value to increment tool box up or down
   /////////////////////////////////////////////////
 
-  if (dir == -1 && selected_tool_ != ToolFire) { selected_tool_--; }
+  // TODO: ToolRope and ToolInfo are hardcoded as the lower/upper bounds. If the
+  //       Tools enum is extended, this silently excludes new tools. Use the first
+  //       and last enum values (or a ToolCount sentinel) to future-proof this.
+  if (dir == -1 && selected_tool_ != ToolRope) { selected_tool_--; }
   else if (dir == 1 && selected_tool_ != ToolInfo) { selected_tool_++; }
 }
 /*****************************************************************************/

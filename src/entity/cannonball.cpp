@@ -28,6 +28,8 @@ clsCannonball::clsCannonball() {
   deltat_ = (1.00 / 60.00);
   forces_ = {0,0};
   acc_ = {0.00, global::physics::kGravity};
+  pathUpdateCounter_ = 0;
+  pathHead_ = 0;
 
   props_.radius = 5.0; //in meters
   props_.density = global::physics::kBallDensity; //density of steel in kg/m^3
@@ -39,9 +41,7 @@ clsCannonball::clsCannonball() {
 
   vel_ = {0,0};
 
-  srand (time(NULL)+(props_.mass*ballID_));
-
-  color_ = {(Uint8)rand() % 255,(Uint8)rand() % 255,(Uint8)rand() % 255};
+  color_ = {0, 0, 0}; // placeholder; set properly in setValues() once ballID_ is known
 
   if(global::config.values.blnDrawPathOnScreen) {
     // Reserve element spots equal to the number of max
@@ -60,7 +60,8 @@ clsCannonball::clsCannonball() {
 /*****************************************************************************/
 clsCannonball::~clsCannonball() {
   // clear the vector path
-
+  // TODO: Triple cleanup is redundant. path_.clear() + shrink_to_fit() already
+  //       releases memory. The final path_ = VPath() assignment is unnecessary.
   path_.clear();
   path_.shrink_to_fit();
   path_ = VPath();
@@ -94,7 +95,7 @@ void clsCannonball::dragUpdateAcc(void) {
   ///
   /////////////////////////////////////////////////
 
-  if (vel_.x != 0.0 && vel_.y != 0.0 && props_.mass != 0.0) {
+  if (math::getVectorLength(vel_) > 0.0 && props_.mass != 0.0) {
     double flow_velocity = math::getVectorLength(vel_);
     double Re = (global::physics::kDensityAir * props_.radius * 2 * flow_velocity);
     Re /= global::physics::kAirDynViscosity;
@@ -156,6 +157,9 @@ void clsCannonball::update(double newdeltat) {
     setEdgePosition();
 
     if (global::config.values.blnLogging) {
+      // TODO: Opening and closing the log file on every update for every ball is
+      //       very slow. Open the file once (e.g. in main or clsConfig::Check) and
+      //       keep it open, passing the FILE* to update() or using a global log handle.
       FILE* logfile = fopen("logfile.log","a");
       fprintf(logfile,"Ball %3u \t (%.3f, %.3f)\n",ballID_, dblLOC_.x,dblLOC_.y);
       fclose(logfile);
@@ -173,7 +177,10 @@ void clsCannonball::update(double newdeltat) {
   } // end if not paused
   updateCollisionBox();
 	show(); //show the ball on the screen
-  // reset the forces so strange things don't happen
+  // TODO: forces_ is not reset here. The comment implies a reset should happen,
+  //       but the reset actually occurs at the top of updateForces(). If updateForces()
+  //       is ever not called before update(), stale forces will accumulate. Consider
+  //       resetting forces_ explicitly at the end of update() for clarity.
 }
 /*****************************************************************************/
 void clsCannonball::show() {
@@ -228,6 +235,8 @@ void clsCannonball::setValues(double r, LOC init_place,
   /////////////////////////////////////////////////
 
   ballID_ = newID;
+  srand(time(NULL) + (uint)(props_.mass * ballID_));
+  color_ = {(Uint8)(rand() % 255), (Uint8)(rand() % 255), (Uint8)(rand() % 255)};
   paused_ = false;
 
   props_.radius = r; //in meters
@@ -312,27 +321,29 @@ void clsCannonball::drawPath(LOC newplace) {
   /// @return void
   /////////////////////////////////////////////////
 
-  static uint updatesSinceLast;
+  // TODO: updatesSinceLast is a static local, meaning it is shared across ALL
+  //       cannonball instances. Multiple balls will interfere with each other's
+  //       path recording cadence. Move this counter into the class as a member.
+  //       (Fixed: now uses pathUpdateCounter_ instance member.)
 
   //If there have been enough updates since the last time the path was updated,
   //then update the path array otherwise inc updates
   SDL_SetTextureColorMod(screen::screenatt.pixel, color_.Red,
                          color_.Green, color_.Blue);
-  if ( updatesSinceLast >= global::config.values.uintPastDelay ) {
-    updatesSinceLast = 0;
-    // put new value into array
-    path_.push_back(newplace);
-    //delete the oldest (first spot) array value
-    path_.erase(path_.begin());
-    path_.shrink_to_fit();
-  } else { updatesSinceLast++; } //end if update points
+  if ( pathUpdateCounter_ >= global::config.values.uintPastDelay ) {
+    pathUpdateCounter_ = 0;
+    // Overwrite the oldest slot in the circular buffer.
+    path_[pathHead_] = newplace;
+    pathHead_ = (pathHead_ + 1) % path_.size();
+  } else { pathUpdateCounter_++; } //end if update points
 
   //Now draw the path
   SDL_Rect dst;
   dst.w = dst.h = 1;
   for (uint i = 0; i < path_.size(); ++i) {
-    dst.y = screen::screenatt.height - (path_[i].y);
-    dst.x = (path_[i].x);
+    const LOC& pt = path_[(pathHead_ + i) % path_.size()];
+    dst.y = screen::screenatt.height - pt.y;
+    dst.x = pt.x;
     SDL_RenderCopy(screen::screenatt.ren, screen::screenatt.pixel, NULL, &dst);
   } //end for
   SDL_SetTextureColorMod(screen::screenatt.pixel, 0xFF, 0xFF, 0xFF);
