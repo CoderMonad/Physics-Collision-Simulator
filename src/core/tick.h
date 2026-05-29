@@ -1,11 +1,11 @@
 #ifndef __MY_TICK_HEADER__
 #define __MY_TICK_HEADER__
 /*****************************************************************************/
-#include <time.h>
+#include <chrono>
 #include <cmath>
 /*****************************************************************************/
 /////////////////////////////////////////////////
-/// @class clsTick tick.h "source/tick.h"
+/// @class clsTick tick.h "src/core/tick.h"
 /// @brief This class will hold functions related to time.
 /////////////////////////////////////////////////
 /*****************************************************************************/
@@ -20,8 +20,8 @@ class clsTick {
 
 	private:
 
-		clock_t lngTimerStart; /**< The time the ball positions were last updated at. */
-		clock_t lngHoldingStart; /**< The time of the start of the mouse being held down. */
+		std::chrono::steady_clock::time_point lngTimerStart; /**< The time the ball positions were last updated at. */
+		std::chrono::steady_clock::time_point lngHoldingStart; /**< The time of the start of the mouse being held down. */
 };
 /*****************************************************************************/
 #endif

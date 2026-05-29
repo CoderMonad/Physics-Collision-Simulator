@@ -1,7 +1,43 @@
 # Change Log
 
 All notable changes to this project will be documented here.
-This project adheres to [Semantic Versioning](http://semver.org/)
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.5.0-R] - 2026-05-29
+### Added
+* `Makefile`: added a modern, robust Linux-compatible build script using `pkg-config` for SDL2 and SDL2_image dependency management; supports all project subdirectories.
+* `clsToolbar::show`: implemented a persistent pause indicator in the top-left (2, 2) of the screen that remains visible whenever the simulation is paused.
+* `clsRope::update`: implemented ball-to-ball rope tension using the constraint-dynamics formula `T = (m1·F2·n̂ − m2·F1·n̂) / (m1 + m2)`.
+* `global::equations`: added `kRadiusMin` (0.01 m) and `kRadiusMax` (0.20 m) constants to prevent division-by-zero or alpha calculation errors.
+* Re-enabled Rope tool (key `3`) and restored it to the toolbar cycle.
+
+### Fixed
+* `clsRope::update`: refactored to use a unified, projection-based tension model for both Ball-Ball and Ball-Wall constraints; implemented a force relaxation factor (0.5) to significantly improve stability in multi-rope scenarios.
+* `clsRope::update`: implemented position-based constraints to prevent ropes from stretching beyond their defined length; free objects now respect "infinite mass" targets (walls or dragged balls).
+* `core::doDeleTool`, `cannonballs::doCollide`: implemented cascading deletion for ropes; ropes are now automatically removed when their attached balls are deleted or absorbed.
+* `clsScreen::drawline`: reset renderer draw color to black after drawing the aiming line to prevent the background from turning white on the next frame clear.
+* `clsScreen::drawline`: replaced pixel-by-pixel blitting loop with a single `SDL_RenderDrawLine` call for a significant performance boost.
+* `clsTick`: replaced `clock()` with `std::chrono::steady_clock` to ensure physics delta-time reflects real wall time.
+* `clsCannonball::drawPath`: replaced circular buffer and fixed interference between instances caused by static local variables.
+* `cannonballs::doCollide`: corrected `ContactAngle` calculation to use the true centre-to-centre collision normal via `atan2`.
+* `cannonballs::clean_up`: replaced buggy erase-while-iterating loop with the standard `std::remove_if` erase-remove idiom.
+* `cannonballs::checkOverlap`: implemented a two-phase collision detection (AABB broadphase + circle-accurate narrowphase).
+* `CollideInelastic`: fixed a copy-paste bug where ball B's post-collision velocity was incorrectly scaled.
+
+### Changed
+* Incremented version to `1.5.0` (Full Release).
+* Rope `length_` changed from `uint` to `double` to eliminate truncation artifacts.
+
+### Removed
+* `clsRope::ballWallForces`: removed deprecated and mathematically flawed force calculation method.
+* Dead `DEFINED_PUSH_BALLS_OUT_OF_OVERLAP` code path.
+
+## [1.4.2-beta.3] - UNRELEASED
+### Changed
+* Moved src files around to group them into similar folders
+* kTimeSizeRation from 0.025 -> 0.25
+* Equation for the relationship between radius and time
 
 ## [1.4.1-R] - 2020-05-29
 ### Added
@@ -144,7 +180,7 @@ This project adheres to [Semantic Versioning](http://semver.org/)
 * Makefile (it should now work).
 * Doxygen now uses DOT to make graphs.
 * Functions that were in main.cpp have been renamed and moved into a namespace.
-* All line seprators from 170 charaters long to 80 to allow me to see if I am breaking Google's recommended 80 charaters length 
+* All line separators from 170 charaters long to 80 to allow me to see if I am breaking Google's recommended 80 charaters length 
 	see [here] (https://google-styleguide.googlecode.com/svn/trunk/cppguide.html#Line_Length) .
 * Made most lines to be less than 80 charaters.
 

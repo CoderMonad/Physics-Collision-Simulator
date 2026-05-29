@@ -20,10 +20,6 @@
      colliding balls. The forces are along the same direction as the velocities
      are. It doesn't make sense in the real world. */
 /*****************************************************************************/
-#define DEFINED_PUSH_BALLS_OUT_OF_OVERLAP 0
-/**< This will turn on a method that will attempt to move the balls until they
-     are no longer overlapping when detecting collision. */
-/*****************************************************************************/
 class clsConfig;
 /*****************************************************************************/
 //global typedefs
@@ -74,6 +70,8 @@ namespace global {
     /////////////////////////////////////////////////
     extern const float kVelocityScalar;
     extern const float kTimeSizeRatio;
+    extern const float kRadiusMin;
+    extern const float kRadiusMax;
     extern const float kMassAlphaRatio;
     extern const float kMassAlphaOffset;
     extern const float kAlphaMinimum;

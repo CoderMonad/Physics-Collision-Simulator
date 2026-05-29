@@ -92,3 +92,6 @@ _start-cmd.bat
 #Doxygen Stuff
 /html/
 /project/gh-pages/
+/src/SDL2
+physics-simulation
+GEMINI.md

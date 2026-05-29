@@ -1,6 +1,6 @@
 /*****************************************************************************/
 #include "config.h"
-#include "version.h"
+#include "../version.h"
 /*****************************************************************************/
 /////////////////////////////////////////////////
 /// @file config.cpp
@@ -65,7 +65,9 @@ bool clsConfig::exists(void) {
 
 	//Returns true or false if config file exists
 	FILE* pTempFile = fopen(FileName_, "r");
-	return (pTempFile != NULL);
+  bool result = (pTempFile != NULL);
+  if (pTempFile) { fclose(pTempFile); }
+  return result;
 }
 /*****************************************************************************/
 void clsConfig::make(void) {
@@ -104,6 +106,9 @@ void clsConfig::load(void) {
   /////////////////////////////////////////////////
 
 	//Loads all of the config values
+  // TODO: Config parsing is brittle — it counts fixed numbers of words with %*s to skip tokens.
+  //       Any change to the key strings breaks loading silently. Consider using a
+  //       key=value format (e.g. "ScreenWidth=640") and parsing by key name instead.
 	char chrTempString[50];
 	int intTempBool, intValuesScanned;
 
@@ -158,14 +163,14 @@ void clsConfig::load(void) {
   fgets(chrTempString,50,configFile_);
   intValuesScanned = sscanf(chrTempString,"%*s %*s %*s %*s %*s %u",
                             &values.uintMaxNumPastPoints);
-  if (intValuesScanned < 1) { printf("Error"); values.uintScreenHeight = 5; }
+  if (intValuesScanned < 1) { printf("Error"); values.uintMaxNumPastPoints = 5; }
   if (global::blnDebugMode)
     { printf("Max num of past points: \t %u\n", values.uintMaxNumPastPoints); }
 
   fgets(chrTempString,50,configFile_);
   intValuesScanned = sscanf(chrTempString,"%*s %*s %*s %*s %u",
                             &values.uintPastDelay);
-  if (intValuesScanned < 1) { printf("Error"); values.uintScreenHeight = 25; }
+  if (intValuesScanned < 1) { printf("Error"); values.uintPastDelay = 25; }
   if (global::blnDebugMode)
     { printf("Delay on points: \t %u\n", values.uintPastDelay); }
 

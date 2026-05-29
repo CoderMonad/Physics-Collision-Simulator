@@ -4,7 +4,7 @@
 #include "screen.h"
 /*****************************************************************************/
 /////////////////////////////////////////////////
-/// @class clsToolbar toolbar.h "source/toolbar.h"
+/// @class clsToolbar toolbar.h "src/ui/toolbar.h"
 /// @brief This class is used to handle showing the toolbar. The actual functions
 ///        of the tools are handled in core.cpp instead.
 /////////////////////////////////////////////////

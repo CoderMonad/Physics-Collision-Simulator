@@ -4,7 +4,7 @@
 #include "cannonball.h"
 /*****************************************************************************/
 /////////////////////////////////////////////////
-/// @class clsRope rope.h "source/rope.h"
+/// @class clsRope rope.h "src/entity/rope.h"
 /// @brief This class will hold all of the functions for the rope.
 /////////////////////////////////////////////////
 /*****************************************************************************/
@@ -59,14 +59,14 @@ class clsRope {
 
       void setAttachment(uchar,LOC);
       void setAttachment(uchar,clsCannonball*);
+      bool isAttachedTo(clsCannonball*);
 
       bool blncheckphysics_; /**< if rope should be updated. */
     private:
 
       void update_spots(void);
-      dblXY ballWallForces(dblXY, double);
 
-      uint length_; /**< Length of the rope. */
+      double length_; /**< Length of the rope in pixels. */
 
       PlacesSpots spot_; /**< Location of attachment spots. */
       AttachSpots attachments_; /**< Type of attachments. */

@@ -7,10 +7,10 @@
 /////////////////////////////////////////////////
 /*****************************************************************************/
 //Include the xpm files which present the images.
-#include "image_ball.xpm"
-#include "image_pixel.xpm"
-#include "image_toolbox_frame.xpm"
-#include "image_tools.xpm"
+#include "../images/image_ball.xpm"
+#include "../images/image_pixel.xpm"
+#include "../images/image_toolbox_frame.xpm"
+#include "../images/image_tools.xpm"
 /*****************************************************************************/
 namespace screen {
   WINATT screenatt;
@@ -230,6 +230,9 @@ void clsScreen::error(void) {
   /////////////////////////////////////////////////
 
   printf("SDL error: %s\n", SDL_GetError());
+  // TODO: getchar() blocks program exit, requiring the user to press a key.
+  //       Consider using SDL_ShowSimpleMessageBox for a non-blocking error dialog,
+  //       or remove the wait entirely and let the caller decide how to handle it.
 	getchar();
 }
 /*****************************************************************************/
@@ -273,38 +276,16 @@ bool clsScreen::getSDLStarted() {
 /*****************************************************************************/
 void clsScreen::drawline(LOC Current, LOC Old) {
   /////////////////////////////////////////////////
-  /// @brief Will draw a line (using the pixel texture) from the old mouse location to
-  ///        the Current mouse location
+  /// @brief Will draw a line from the old mouse location to the Current mouse location
   /// @param Current = Current Mouse Location in terms of X and Y
   /// @param Old = Old Mouse Location (start of click) in terms of X and Y
   /// @return void
   /////////////////////////////////////////////////
 
-  double slope;
-  SDL_Rect dst;
-  SDL_QueryTexture(screen::screenatt.pixel, NULL, NULL, &dst.w, &dst.h);
-  uint length;
-  length = (uint) round( sqrt( pow(Current.x - Old.x, 2) +
-            pow(Current.y - Old.y, 2) ) );
-  if (Current.x == Old.x ) {
-    dst.x = Current.x;
-    for (uint i = 0; i < length; ++i) {
-      dst.y = i + (Current.y > Old.y ? Old.y : Current.y);
-      SDL_RenderCopy(screen::screenatt.ren, screen::screenatt.pixel, NULL, &dst);
-    } //end for length
-  } else {
-    slope = ((double)Current.y - (double)Old.y);
-    slope /=((double)Current.x - (double)Old.x);
-    uint startpoint = (Old.x < Current.x) ? Old.x : Current.x;
-    uint endpoint = (Old.x < Current.x) ? Current.x : Old.x;
-    double incamount = (double)(endpoint - startpoint) / length;
-    for (double i = startpoint; i < endpoint; i += incamount) {
-      dst.x = round(i);
-      dst.y = Old.y;
-      dst.y += (uint) round( slope * (double) (i - Old.x) );
-      SDL_RenderCopy(screen::screenatt.ren, screen::screenatt.pixel, NULL, &dst);
-    } //end for length
-  } //end if
+  SDL_SetRenderDrawColor(screen::screenatt.ren, 0xFF, 0xFF, 0xFF, 0xFF);
+  SDL_RenderDrawLine(screen::screenatt.ren, Old.x, Old.y, Current.x, Current.y);
+  // Reset the draw color to black so the next clearscreen() call works correctly.
+  SDL_SetRenderDrawColor(screen::screenatt.ren, 0x00, 0x00, 0x00, 0xFF);
 }
 /*****************************************************************************/
 void clsScreen::setClips() {
@@ -334,6 +315,8 @@ void clsScreen::setClips() {
    *     +-----+
    */
 
+   // TODO: pic_size is hardcoded as 24 in two places (here and in show()).
+   //       Extract it to a named constant or query it from the texture at runtime.
    int pic_size = 24;
 
    screen::screenatt.toolclips[ToolFire] = {0 * pic_size, 0 * pic_size, pic_size, pic_size};

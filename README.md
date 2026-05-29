@@ -17,38 +17,39 @@ or you can read [here](http://unlicense.org) for information of the Unlicense in
 
 * You can modify this code any way you wish without credit (but we would certainty appreciate it)
 
-* You can any/all of this code for private and/or commercial use
+* You can use any/all of this code for private and/or commercial use
 
-# Running the program
+# Building and Running
 
-In order to run the program properly you will need to download SDL2-2.0.3 or higher AND SDL2-image (these are two different libraries). 
+## Windows
+In order to run the program properly you will need to download SDL2 and SDL2-image. 
 
 A link for SDL2 can be found [here](https://www.libsdl.org/download-2.0.php).
 
 A link for SDL2 image can be found [here](https://www.libsdl.org/projects/SDL_image/) .
 
-You will want to download the Runtime Binaries (if you have windows I recommend 32 bit over 64 bit; even if you have a 64 bit computer).
-
-When all is said and done you should have the following files in your folder. (Also note that you should be able to put the dll files in your C drive).
+When all is said and done you should have the following files in your folder.
 
 ```
 FolderName\
-FolderName\Physics-Simulation.exe
+FolderName\physics-simulation.exe
 FolderName\SDL2.dll
 FolderName\SDL2_image.dll
 ```
 
-If you are using the version I compile, which can be found in the [release tab](https://github.com/Dragon-Wonder/Physics-Collision-Simulator/releases) 
-you will also need the following binaries. 
+## Linux
+To build on Linux, you will need the SDL2 and SDL2_image development libraries.
 
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install libsdl2-dev libsdl2-image-dev
 ```
-FolderName\libgcc_s_dw2-1.dll
-FolderName\libstdc++-6.dll
+
+Then run `make` in the root directory:
+```bash
+make
+./physics-simulation
 ```
-
-They should be included in the release. 
-
-Let me know if I am missing a dependences that I might have forgotten about due to my own system set up.
 
 # Using the Program
 
@@ -56,7 +57,7 @@ The first time you run the program a "Config.ini" will be created it should look
 
 ```
 Config File for the Cannon.exe
-1.4.0-R
+1.5.0
 Screen Width: 640
 Screen Height: 480
 Log Ball's path: 0
@@ -92,28 +93,28 @@ online and I cannot verify how accurate it is.
 A smaller number means that the points are recorded much faster.
 
 Once you start the program you will be greeted with a beautiful black screen. To create a new cannonball you click (and hold down the button) 
-you can now move your move around to change the angle that the new cannonball will be fired at; as well as the longer the line the faster it will go. 
-When you are happy with the angle and speed simply release the mouse button and it will be created at the point where you clicked the mouse button down.
+you can now move your mouse around to change the angle that the new cannonball will be fired at; the longer the line, the faster it will go. 
+When you are happy with the angle and speed, simply release the mouse button and the ball will be created at the point where you first clicked.
 
 The longer you hold down the mouse button the larger the radius of the ball will be and as a result, the more mass the ball will have. You can get an 
-idea of how much mass a ball has based on how transparent it is, the more transparent it is the lighter its mass.
+idea of how much mass a ball has based on how transparent it is; the more transparent it is, the lighter its mass.
 
 ## Keybinds
 
-You can also press the following keys to yield effects
+You can also press the following keys to yield effects:
 
 ```
 K = All Balls will be "killed".
 R = All motion will be stopped.
 Q / ESC = Program will exit.
-F = Every so often a randomly generated cannonball will be created
+F = Toggle random fire (periodically fires random cannonballs)
 T = Toggle toolbox on/off
 P = Toggle pause for the simulation
 Right Arrow = Select next tool
 Left Arrow = Select previous tool
 1 = Select Fire tool
 2 = Select Drop tool
-3 = Select Rope tool - DISABLED ATM
+3 = Select Rope tool
 4 = Select Delete tool
 5 = Select Drag tool
 6 = Select Info tool
@@ -122,27 +123,20 @@ Left Arrow = Select previous tool
 ## Tools
 
 ### Fire tool
-
-Clicking a dragging on screen will cause a white line to drawn from original click location to current mouse condition. 
-When mouse is released a ball will be fired in the direction from the first click location to where released. The ball's velocity will be proportional to the distance between the two points.  
-The mass of the ball will be proportional to the length of time that the mouse was held down for.
+Clicking and dragging on the screen will draw a white line from the original click location. When the mouse is released, a ball will be fired in that direction with velocity proportional to the line length. Mass is determined by how long the button was held.
 
 ### Drop tool
+Clicking on the screen will create a ball at that location with no initial velocity. Mass is determined by hold duration.
 
-Clicking on the screen will cause a ball to be created at selected location. The ball will have no velocity and its mass will be proportional to the length of time the mouse is held down for.
-
-### Rope tool - DISABLED ATM
-
-Clicking on a ball will cause it to be attached to one end of a rope. The rope can then be attached to another ball, or pinned to background. 
+### Rope tool
+Clicking on a ball attaches one end of a rope. The other end can be attached to another ball or pinned to the background (by clicking where there is no ball).
+The rope uses a hybrid force-position model to ensure it is inextensible, pulling connected objects along rather than stretching.
 
 ### Delete tool
-
-Clicking on a ball will delete it.
+Clicking on a ball will delete it. Any ropes attached to that ball will also be automatically removed.
 
 ### Drag tool
-
-Clicking and dragging on a ball will allow you to move a ball where the mouse is. When released the ball will still have its inital velocity.
+Clicking and dragging on a ball allows you to move it. While dragging, the ball is "paused" in the physics simulation. When released, it will retain its initial velocity.
 
 ### Info Tool
-
-Clicking on a ball will write information about it to the console
+Clicking on a ball will print detailed information about its physical properties and state to the console.

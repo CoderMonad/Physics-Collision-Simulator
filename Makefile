@@ -1,38 +1,36 @@
-# Set the Prefix of each line from \t (default) to >
-.RECIPEPREFIX = >
-# Basic Make file (haven't tested it yet)
-CC=g++
-# Flags to be used 
-CFLAGS=-w -s -Os -std=c++11
-# Linked libraries
-LDFLAGS=-L./SDL2Stuff/lib -lSDL2main -lSDL2 -lSDL2_image
-# Path to .cpp files
-SRCPATH = ./src/
-# Name of the executable made
-EXECUTABLE=physics-simulation
-# Include Flags to look in Src folder
-INCLUDEFLAGS=-I. -I$(SRCPATH) -I./SDL2Stuff/include
+# Linux Makefile for Physics Collision Simulator
 
-all: project
+CXX = g++
+CXXFLAGS = -std=c++11 -Wall -O2 -Isrc $(shell pkg-config --cflags sdl2 SDL2_image 2>/dev/null)
+LDFLAGS = $(shell pkg-config --libs sdl2 SDL2_image 2>/dev/null || echo "-lSDL2 -lSDL2_image")
 
-project: main.o cannonball.o config.o screen.o tick.o
-> $(CC) $(CFLAGS) main.o cannonball.o config.o screen.o tick.o -o $(EXECUTABLE) $(LDFLAGS)
+# Source files
+SRCS = src/main.cpp \
+       src/core/config.cpp \
+       src/core/core.cpp \
+       src/core/tick.cpp \
+       src/entity/cannonball.cpp \
+       src/entity/rope.cpp \
+       src/math/vector_math.cpp \
+       src/ui/screen.cpp \
+       src/ui/toolbar.cpp
 
-main.o: $(SRCPATH)main.cpp $(SRCPATH)version.h $(SRCPATH)global.h $(SRCPATH)screen.h $(SRCPATH)cannonball.h $(SRCPATH)tick.h $(SRCPATH)config.h
-> $(CC) $(CFLAGS) $(INCLUDEFLAGS) -c $(SRCPATH)main.cpp
+# Object files
+OBJS = $(SRCS:.cpp=.o)
 
-cannonball.o: $(SRCPATH)cannonball.cpp $(SRCPATH)cannonball.h $(SRCPATH)screen.h
-> $(CC) $(CFLAGS) $(INCLUDEFLAGS) -c $(SRCPATH)cannonball.cpp
+# Executable name
+TARGET = physics-simulation
 
-config.o: $(SRCPATH)config.cpp $(SRCPATH)config.h $(SRCPATH)version.h
-> $(CC) $(CFLAGS) $(INCLUDEFLAGS) -c $(SRCPATH)config.cpp
+all: $(TARGET)
 
-screen.o: $(SRCPATH)screen.cpp $(SRCPATH)screen.h $(SRCPATH)image_ball.xpm $(SRCPATH)image_pixel.xpm
-> $(CC) $(CFLAGS) $(INCLUDEFLAGS) -c $(SRCPATH)screen.cpp
+$(TARGET): $(OBJS)
+	$(CXX) $(OBJS) -o $(TARGET) $(LDFLAGS)
 
-tick.o: $(SRCPATH)tick.cpp $(SRCPATH)tick.h
-> $(CC) $(CFLAGS) $(INCLUDEFLAGS) -c $(SRCPATH)tick.cpp
+# Generic rule for compiling .cpp to .o
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-> rm *o $(EXECUTABLE)
+	rm -f $(OBJS) $(TARGET)
 
+.PHONY: all clean

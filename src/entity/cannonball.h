@@ -1,15 +1,15 @@
 #ifndef __CANNONBALL_HEADER__
 #define __CANNONBALL_HEADER__
 /*****************************************************************************/
-#include "vector_math.h"
+#include "../math/vector_math.h"
 #include <cstdlib>
 #include <vector>
 #include <time.h>
 #include <cmath>
-#include "screen.h"
+#include "../ui/screen.h"
 /*****************************************************************************/
 /////////////////////////////////////////////////
-/// @class clsCannonball cannonball.h "source/cannonball.h"
+/// @class clsCannonball cannonball.h "src/entity/cannonball.h"
 /// @brief This class is used to create and control each of the balls.
 /////////////////////////////////////////////////
 /*****************************************************************************/
@@ -109,6 +109,8 @@ class clsCannonball {
 
     dblXY forces_; /**< Forces on the ball in x and y */
     bool paused_; /**< If the simulation is paused or not.  */
+    uint pathUpdateCounter_; /**< Frames elapsed since the last path point was recorded. */
+    uint pathHead_;          /**< Next write index into the circular path_ buffer. */
 
     void show(void);
     void drawPath(LOC);

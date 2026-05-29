@@ -138,30 +138,30 @@
 			<Option target="Debug-Windows" />
 			<Option target="Release-Windows" />
 		</Unit>
-		<Unit filename="../src/cannonball.cpp" />
-		<Unit filename="../src/cannonball.h" />
-		<Unit filename="../src/config.cpp" />
-		<Unit filename="../src/config.h" />
-		<Unit filename="../src/core.cpp" />
-		<Unit filename="../src/core.h" />
+		<Unit filename="../src/entity/cannonball.cpp" />
+		<Unit filename="../src/entity/cannonball.h" />
+		<Unit filename="../src/core/config.cpp" />
+		<Unit filename="../src/core/config.h" />
+		<Unit filename="../src/core/core.cpp" />
+		<Unit filename="../src/core/core.h" />
 		<Unit filename="../src/global.h" />
-		<Unit filename="../src/image_ball.xpm" />
-		<Unit filename="../src/image_pixel.xpm" />
-		<Unit filename="../src/image_toolbox_frame.xpm" />
-		<Unit filename="../src/image_tools.xpm" />
+		<Unit filename="../src/images/image_ball.xpm" />
+		<Unit filename="../src/images/image_pixel.xpm" />
+		<Unit filename="../src/images/image_toolbox_frame.xpm" />
+		<Unit filename="../src/images/image_tools.xpm" />
 		<Unit filename="../src/main.cpp" />
-		<Unit filename="../src/rope.cpp" />
-		<Unit filename="../src/rope.h" />
-		<Unit filename="../src/screen.cpp">
+		<Unit filename="../src/entity/rope.cpp" />
+		<Unit filename="../src/entity/rope.h" />
+		<Unit filename="../src/ui/screen.cpp">
 			<Option weight="28" />
 		</Unit>
-		<Unit filename="../src/screen.h" />
-		<Unit filename="../src/tick.cpp" />
-		<Unit filename="../src/tick.h" />
-		<Unit filename="../src/toolbar.cpp" />
-		<Unit filename="../src/toolbar.h" />
-		<Unit filename="../src/vector_math.cpp" />
-		<Unit filename="../src/vector_math.h" />
+		<Unit filename="../src/ui/screen.h" />
+		<Unit filename="../src/core/tick.cpp" />
+		<Unit filename="../src/core/tick.h" />
+		<Unit filename="../src/ui/toolbar.cpp" />
+		<Unit filename="../src/ui/toolbar.h" />
+		<Unit filename="../src/math/vector_math.cpp" />
+		<Unit filename="../src/math/vector_math.h" />
 		<Unit filename="../src/version.h" />
 		<Extensions>
 			<DoxyBlocks>

@@ -3,7 +3,7 @@
 /*****************************************************************************/
 #include <cstdio>
 /*****************************************************************************/
-#include "global.h"
+#include "../global.h"
 /*****************************************************************************/
 /** @struct ConfigValues
     This Structure holds all of the different config values together. */
@@ -22,7 +22,7 @@ struct ConfigValues {
 typedef struct ConfigValues Configures;
 /*****************************************************************************/
 /////////////////////////////////////////////////
-/// @class clsConfig config.h "source/config.h"
+/// @class clsConfig config.h "src/core/config.h"
 /// @brief This class will hold all of the values and functions related to the
 ///        config file.
 /////////////////////////////////////////////////
