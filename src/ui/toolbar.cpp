@@ -17,28 +17,26 @@ clsToolbar::clsToolbar() {
 /*****************************************************************************/
 void clsToolbar::show() {
   /////////////////////////////////////////////////
-  /// @brief Displays the toolbox if enabled
+  /// @brief Displays the toolbox if enabled, and pause indicator if paused
   /////////////////////////////////////////////////
 
-  // Make SDL rect just for the tool picture inside the frame
-  SDL_Rect tool_pic_box = {position_.x+2,position_.y+2,24,24};
-  SDL_Rect pause_location = {screen::screenatt.width-24,2,24,24};
-
-  pause_location.x += 28;
-
+  // Draw pause indicator in top left if paused
+  if (global::blnPaused) {
+    SDL_Rect pause_rect = {2, 2, 24, 24};
+    SDL_RenderCopy(screen::screenatt.ren, screen::screenatt.tools,
+                   &screen::screenatt.toolclips[ToolPause], &pause_rect);
+  }
 
   if(show_toolbox_) { // only show if enabled
+    // Make SDL rect just for the tool picture inside the frame
+    SDL_Rect tool_pic_box = {position_.x+2,position_.y+2,24,24};
+
     SDL_RenderCopy(screen::screenatt.ren,screen::screenatt.toolbox,
                  NULL,&position_); // draw toolbox frame
 
     // draw tool inside box
     SDL_RenderCopy(screen::screenatt.ren,screen::screenatt.tools,
                    &screen::screenatt.toolclips[selected_tool_], &tool_pic_box);
-
-    if (global::blnPaused) {
-      SDL_RenderCopy(screen::screenatt.ren,screen::screenatt.tools,
-                     &screen::screenatt.toolclips[ToolPause], &pause_location);
-    }
   }
 }
 /*****************************************************************************/

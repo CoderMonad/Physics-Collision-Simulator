@@ -59,12 +59,12 @@ class clsRope {
 
       void setAttachment(uchar,LOC);
       void setAttachment(uchar,clsCannonball*);
+      bool isAttachedTo(clsCannonball*);
 
       bool blncheckphysics_; /**< if rope should be updated. */
     private:
 
       void update_spots(void);
-      dblXY ballWallForces(dblXY, double);
 
       double length_; /**< Length of the rope in pixels. */
 

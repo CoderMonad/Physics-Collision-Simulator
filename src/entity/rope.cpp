@@ -34,70 +34,96 @@ void clsRope::update() {
          (attachments_.one == AttachmentBall && balls_.one == nullptr) ||
          (attachments_.two == AttachmentBall && balls_.two == nullptr)
        ) {
-      // if both spots are attached to walls, delete it, since it is not going
-      // to be doing anything
       if(global::blnDebugMode) {printf("Bad rope, killing it.\n");}
-
       blncheckphysics_ = false;
       return;
     }
     update_spots();
-    double angle;
-    LOC differencexy;
-    dblXY tension;
-    dblXY ball_one_forces, ball_two_forces;
-    differencexy.x = abs (spot_.one.x - spot_.two.x);
-    differencexy.y = abs (spot_.one.y - spot_.two.y);
 
-    // get the angle measure from spot one to spot two.
-    // some of these equations are to correct the angle value.
-    angle = (differencexy.x != 0) ? atan ((double)differencexy.y / (double)differencexy.x) :
-                                    M_PI / 2;
+    // Vector from spot 1 to spot 2 in screen space (y-down)
+    double dx = (double)(spot_.two.x - spot_.one.x);
+    double dy = (double)(spot_.two.y - spot_.one.y);
+    double dist = sqrt(dx * dx + dy * dy);
 
-    if (angle == M_PI/2) {angle += (spot_.one.y > spot_.two.y) ? M_PI : 0;}
-    angle += (spot_.two.x < spot_.one.x) ? M_PI : 0;
+    if (dist >= length_) {
+      // Unit vector from spot 1 to spot 2 in screen space
+      // Negate y for physics space (y-up)
+      dblXY n_phys = {dx / dist, -dy / dist};
 
-    // forces only happen when rope is "tense" aka at or greater than length
-    if (sqrt(pow(differencexy.x,2) + pow(differencexy.y,2)) >= length_) {
-      if (attachments_.one == AttachmentBall && attachments_.two == AttachmentWall) {
-        ball_one_forces = balls_.one->getForces();
-        tension = ballWallForces(ball_one_forces,angle);
-        balls_.one->addForce(tension);
-      } else if (attachments_.one == AttachmentWall && attachments_.two == AttachmentBall ) {
-        ball_one_forces = balls_.two->getForces();
-        tension = ballWallForces(ball_one_forces,angle);
-        balls_.two->addForce(tension);
+      PP props1, props2;
+      dblXY f1, f2;
+      bool p1 = false, p2 = false;
+
+      // Handle properties and flags based on attachment types
+      if (attachments_.one == AttachmentBall) {
+        props1 = balls_.one->getPhysicalProps();
+        f1 = balls_.one->getForces();
+        p1 = balls_.one->isPaused();
       } else {
-        // rope attached to two balls
-        ball_one_forces = balls_.one->getForces();
-        ball_two_forces = balls_.two->getForces();
-        PP props1 = balls_.one->getPhysicalProps();
-        PP props2 = balls_.two->getPhysicalProps();
+        // Wall acts as infinite mass (props1.mass = 1.0, f1 = 0.0)
+        props1 = {1.0, 1.0, 1.0, 1.0};
+        f1 = {0.0, 0.0};
+        p1 = true;
+      }
 
-        // Unit vector from ball 1 to ball 2 in screen space (y-down).
-        // Negate y to convert to physics space (y-up), where forces live.
-        double dx = (double)(spot_.two.x - spot_.one.x);
-        double dy = (double)(spot_.two.y - spot_.one.y);
-        double dist = sqrt(dx * dx + dy * dy);
+      if (attachments_.two == AttachmentBall) {
+        props2 = balls_.two->getPhysicalProps();
+        f2 = balls_.two->getForces();
+        p2 = balls_.two->isPaused();
+      } else {
+        props2 = {1.0, 1.0, 1.0, 1.0};
+        f2 = {0.0, 0.0};
+        p2 = true;
+      }
 
-        if (dist >= 0.5) {
-          dblXY n_phys = {dx / dist, -dy / dist};
+      // Project net forces onto rope axis (physics space)
+      double f1_along = f1.x * n_phys.x + f1.y * n_phys.y;
+      double f2_along = f2.x * n_phys.x + f2.y * n_phys.y;
 
-          // Project each ball's net force onto the rope axis (physics space).
-          double f1_along = ball_one_forces.x * n_phys.x + ball_one_forces.y * n_phys.y;
-          double f2_along = ball_two_forces.x * n_phys.x + ball_two_forces.y * n_phys.y;
+      // Inextensible-constraint tension: T = (m1*F2_along - m2*F1_along)/(m1+m2)
+      // For Wall (infinite mass), this simplifies to T = -F_along.
+      double m1 = p1 ? 1e12 : props1.mass;
+      double m2 = p2 ? 1e12 : props2.mass;
 
-          // Inextensible-constraint tension: T = (m1*F2_along - m2*F1_along)/(m1+m2).
-          // Derived from (a1 - a2)·n̂ = 0 with T applied along n̂.
-          // Clamp to 0 — rope can pull but not push.
-          // Note: this force-only model doesn't include centripetal or velocity-level
-          // correction terms, consistent with the ball-wall rope implementation.
-          double T = (props1.mass * f2_along - props2.mass * f1_along) /
-                     (props1.mass + props2.mass);
-          if (T > 0.0) {
-            balls_.one->addForce({  T * n_phys.x,  T * n_phys.y });
-            balls_.two->addForce({ -T * n_phys.x, -T * n_phys.y });
-          }
+      double T = (m1 * f2_along - m2 * f1_along) / (m1 + m2);
+
+      // Force relaxation factor (0.5) improves stability when multiple ropes
+      // act on the same ball, preventing over-correction and jitter.
+      const double kRelax = 0.5;
+
+      if (T > 0.0) {
+        if (attachments_.one == AttachmentBall && !p1) {
+          balls_.one->addForce({  T * kRelax * n_phys.x,  T * kRelax * n_phys.y });
+        }
+        if (attachments_.two == AttachmentBall && !p2) {
+          balls_.two->addForce({ -T * kRelax * n_phys.x, -T * kRelax * n_phys.y });
+        }
+      }
+
+      // Position correction to prevent stretching (Verlet-style pass)
+      if (dist > length_) {
+        double ratio = (dist - length_) / dist;
+        double pdx = dx / global::physics::kMeterPixelRatio;
+        double pdy = -dy / global::physics::kMeterPixelRatio;
+
+        if (p1 && !p2) {
+          dblXY loc2 = balls_.two->getdbLOC();
+          loc2.x -= pdx * ratio; loc2.y -= pdy * ratio;
+          balls_.two->setdbLOC(loc2);
+        } else if (!p1 && p2) {
+          dblXY loc1 = balls_.one->getdbLOC();
+          loc1.x += pdx * ratio; loc1.y += pdy * ratio;
+          balls_.one->setdbLOC(loc1);
+        } else if (!p1 && !p2) {
+          double total_m = props1.mass + props2.mass;
+          dblXY loc1 = balls_.one->getdbLOC();
+          dblXY loc2 = balls_.two->getdbLOC();
+          loc1.x += pdx * ratio * (props2.mass / total_m);
+          loc1.y += pdy * ratio * (props2.mass / total_m);
+          loc2.x -= pdx * ratio * (props1.mass / total_m);
+          loc2.y -= pdy * ratio * (props1.mass / total_m);
+          balls_.one->setdbLOC(loc1);
+          balls_.two->setdbLOC(loc2);
         }
       }
     }
@@ -247,37 +273,14 @@ void clsRope::update_spots() {
                                    spot_.one.x,spot_.one.y,spot_.two.x,spot_.two.y);} */
 }
 /*****************************************************************************/
-dblXY clsRope::ballWallForces(dblXY ball_one_forces, double angle) {
-  dblXY tension;
-  const double kAngleEps = 1e-9;
-  const bool is_vertical   = fabs(angle - M_PI / 2)       < kAngleEps ||
-                              fabs(angle - 3.0 / 2.0 * M_PI) < kAngleEps;
-  const bool is_lower_half = !is_vertical && angle > M_PI && angle < 2 * M_PI;
-  const bool is_upper_half = !is_vertical && angle > 0    && angle < M_PI;
+bool clsRope::isAttachedTo(clsCannonball* ball) {
+  /////////////////////////////////////////////////
+  /// @brief Checks if the rope is attached to a specific ball
+  /// @param ball = pointer to the ball to check
+  /// @return true if attached to the ball, false otherwise
+  /////////////////////////////////////////////////
 
-  if (is_vertical) {
-    tension.x = 0;
-    tension.y = ball_one_forces.y;
-    if (!(std::signbit((double)spot_.one.y-(double)spot_.two.y) ^ std::signbit(ball_one_forces.y))) {
-      // force and direction to spot two are both positive or both negative, therefore
-      // reverse the force for tension
-      tension.y *= -1;
-    }
-  } else if (is_lower_half) {
-    tension.y = ball_one_forces.y;
-    tension.x = tension.y / tan(angle);
-  } else if (is_upper_half) {
-    tension.y = -1 * ball_one_forces.y;
-    tension.x = tension.y / tan(angle);
-  } else {
-    tension.y = 0;
-    tension.x = ball_one_forces.x;
-    if ((std::signbit((double)spot_.one.x-(double)spot_.two.x) ^ std::signbit(ball_one_forces.x))) {
-      // force and direction to spot two are both positive or both negative, therefore
-      // reverse the force for tension
-      tension.x *= -1;
-    }
-  }
-  return tension;
+  return ( (attachments_.one == AttachmentBall && balls_.one == ball) ||
+           (attachments_.two == AttachmentBall && balls_.two == ball) );
 }
 /*****************************************************************************/

@@ -294,6 +294,14 @@ void cannonballs::doCollide(uint numA, uint numB) {
     Avel = math::vectorDiv(TotalAMomentum,Aprops.mass);
     //now "kill" cannonball B and update ball A
     balls[numB].blnstarted_ = false;
+
+    // Also mark any ropes attached to ball B as dead
+    for (size_t i = 0; i < ropes.size(); ++i) {
+      if (ropes[i].isAttachedTo(&balls[numB])) {
+        ropes[i].blncheckphysics_ = false;
+      }
+    }
+
     balls[numA].setPhysicalProps(Aprops);
     balls[numA].setVelocity(Avel);
     break;
@@ -556,7 +564,15 @@ void core::doDeleTool(SDL_Event* e) {
     SDL_GetMouseState(&currentmouse.x, &currentmouse.y);
     ball_num = findSelectedBall(currentmouse);
     if (ball_num == -1) { return; }
+    // Mark the ball as dead
     cannonballs::balls[ball_num].blnstarted_ = false;
+
+    // Also mark any ropes attached to this ball as dead
+    for (size_t i = 0; i < cannonballs::ropes.size(); ++i) {
+      if (cannonballs::ropes[i].isAttachedTo(&cannonballs::balls[ball_num])) {
+        cannonballs::ropes[i].blncheckphysics_ = false;
+      }
+    }
   }
 }
 /*****************************************************************************/

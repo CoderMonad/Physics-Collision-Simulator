@@ -4,50 +4,34 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.5.0-alpha.4] - 2026-05-27
+## [1.5.0-R] - 2026-05-29
+### Added
+* `Makefile`: added a modern, robust Linux-compatible build script using `pkg-config` for SDL2 and SDL2_image dependency management; supports all project subdirectories.
+* `clsToolbar::show`: implemented a persistent pause indicator in the top-left (2, 2) of the screen that remains visible whenever the simulation is paused.
+* `clsRope::update`: implemented ball-to-ball rope tension using the constraint-dynamics formula `T = (m1·F2·n̂ − m2·F1·n̂) / (m1 + m2)`.
+* `global::equations`: added `kRadiusMin` (0.01 m) and `kRadiusMax` (0.20 m) constants to prevent division-by-zero or alpha calculation errors.
+* Re-enabled Rope tool (key `3`) and restored it to the toolbar cycle.
+
 ### Fixed
-* `clsTick`: replaced `clock()` (CPU time) with `std::chrono::steady_clock` so delta-time reflects real wall time, fixing physics running at wrong speed when the OS sleeps the process
-* `clsCannonball::drawPath`: per-instance `pathUpdateCounter_` replaces a `static` local variable that was shared across all ball instances, causing balls to interfere with each other's path recording cadence
-* `clsCannonball::drawPath`: `push_back + erase(begin) + shrink_to_fit` on every recorded frame replaced with a circular buffer (`pathHead_` index); eliminates two potential reallocations and an O(n) element shift per recorded point
-* `clsCannonball::dragUpdateAcc`: drag force was skipped when a ball moved purely horizontally or vertically (`vel_.x != 0 && vel_.y != 0` guard); replaced with `getVectorLength(vel_) > 0`
-* `clsCannonball` constructor: `srand` was called with uninitialized `ballID_`; both `srand` and `color_` initialisation moved into `setValues()` after `ballID_` is assigned
-* `cannonballs::doCollide`: `ContactAngle` was computed as the difference of velocity angles, not the true centre-to-centre collision normal; replaced with `atan2` of the ball-centre delta vector (y-flipped to physics-space)
-* `cannonballs::clean_up`: erase-while-iterating loop skipped the element that shifted into the erased index; replaced with `std::remove_if` erase-remove idiom for both balls and ropes vectors
-* `clsConfig::exists`: `fopen` handle was never closed; added `fclose` before returning
-* `clsConfig::load`: two copy-paste bugs where parse-failure fallbacks assigned to `uintScreenHeight` instead of `uintMaxNumPastPoints` and `uintPastDelay` respectively
-* `main`: `event_return` was uninitialised; a missing `SDL_PollEvent` result on the first frame could trigger a spurious `quit` or `fire` via the switch
-* `main`: loop indices changed from `int` to `size_t` to eliminate signed/unsigned comparison against `balls.size()` / `ropes.size()`
-* `clsScreen::drawline`: pixel-by-pixel `SDL_RenderCopy` loop replaced with a single `SDL_RenderDrawLine` call; eliminates O(n) per-pixel texture blits for every line segment
-* `clsRope::ballWallForces`: `3/2 * M_PI` was integer division (`= M_PI`), producing a wrong threshold angle; fixed to `3.0/2.0 * M_PI`; floating-point `==` comparisons replaced with epsilon checks
-* `math::vectorDiv`: added `assert` guards against division by zero in both the scalar and vector overloads
-* `toolbar::show`: `pause_location.x + 28` was a no-op expression (result discarded); corrected to `pause_location.x += 28`
+* `clsRope::update`: refactored to use a unified, projection-based tension model for both Ball-Ball and Ball-Wall constraints; implemented a force relaxation factor (0.5) to significantly improve stability in multi-rope scenarios.
+* `clsRope::update`: implemented position-based constraints to prevent ropes from stretching beyond their defined length; free objects now respect "infinite mass" targets (walls or dragged balls).
+* `core::doDeleTool`, `cannonballs::doCollide`: implemented cascading deletion for ropes; ropes are now automatically removed when their attached balls are deleted or absorbed.
+* `clsScreen::drawline`: reset renderer draw color to black after drawing the aiming line to prevent the background from turning white on the next frame clear.
+* `clsScreen::drawline`: replaced pixel-by-pixel blitting loop with a single `SDL_RenderDrawLine` call for a significant performance boost.
+* `clsTick`: replaced `clock()` with `std::chrono::steady_clock` to ensure physics delta-time reflects real wall time.
+* `clsCannonball::drawPath`: replaced circular buffer and fixed interference between instances caused by static local variables.
+* `cannonballs::doCollide`: corrected `ContactAngle` calculation to use the true centre-to-centre collision normal via `atan2`.
+* `cannonballs::clean_up`: replaced buggy erase-while-iterating loop with the standard `std::remove_if` erase-remove idiom.
+* `cannonballs::checkOverlap`: implemented a two-phase collision detection (AABB broadphase + circle-accurate narrowphase).
+* `CollideInelastic`: fixed a copy-paste bug where ball B's post-collision velocity was incorrectly scaled.
 
-### Added
-* Ball-to-ball rope tension implemented in `clsRope::update` using the constraint-dynamics formula `T = (m1·F2·n̂ − m2·F1·n̂) / (m1 + m2)` derived from `(a1 − a2)·n̂ = 0`; tension is clamped to ≥ 0 (rope can only pull)
-
-
-### Added
-* `kRadiusMin` (0.01 m) and `kRadiusMax` (0.20 m) constants in `global::equations` namespace; ball radius is now clamped to this range on creation, preventing near-zero mass that caused division-by-zero in acceleration and `log(0)` in alpha calculations
+### Changed
+* Incremented version to `1.5.0` (Full Release).
+* Rope `length_` changed from `uint` to `double` to eliminate truncation artifacts.
 
 ### Removed
-* Dead `DEFINED_PUSH_BALLS_OUT_OF_OVERLAP` code path and its feature flag — superseded by the circle-based post-collision separation added in 1.5.0-alpha.2
-
-## [1.5.0-alpha.2] - 2026-05-27
-### Changed
-* `cannonballs::checkOverlap` now uses a two-phase collision detection approach: a fast AABB broadphase rejects clearly non-overlapping pairs, followed by a pixel-accurate circle distance narrowphase (`dx² + dy² ≤ (r_A + r_B)²`) that correctly handles round balls instead of squares; also fixes a pre-existing bug where a ball fully contained inside another was never detected
-* Post-collision ball separation now resolves along the true centre-to-centre axis (instead of the axis of least AABB penetration), giving correct push direction for diagonal collisions; degenerate case of coincident centres falls back to a horizontal push
-
-## [1.5.0-alpha.1] - 2026-05-27
-### Fixed
-* Balls sticking together after collision: added a post-collision minimum translation vector (MTV) separation step so overlapping balls are physically pushed apart each frame, preventing repeated collision resolution from draining their energy
-* Copy-paste bug in `CollideInelastic` mode where ball B's post-collision velocity was incorrectly scaled using ball A's momentum instead of its own
-* Rope rendering as a straight line: rope now draws as a gravity-sagging catenary curve using a quadratic Bezier parabolic approximation; sag direction is computed as the gravity component perpendicular to the rope chord, so ropes hang correctly at any angle
-
-### Changed
-* Rope `length_` changed from `uint` to `double` to eliminate truncation artifacts when the rope is created
-
-### Added
-* Re-enabled rope tool: key `3` now activates the rope tool; left-arrow navigation now cycles through it
+* `clsRope::ballWallForces`: removed deprecated and mathematically flawed force calculation method.
+* Dead `DEFINED_PUSH_BALLS_OUT_OF_OVERLAP` code path.
 
 ## [1.4.2-beta.3] - UNRELEASED
 ### Changed

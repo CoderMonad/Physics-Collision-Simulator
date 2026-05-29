@@ -284,6 +284,8 @@ void clsScreen::drawline(LOC Current, LOC Old) {
 
   SDL_SetRenderDrawColor(screen::screenatt.ren, 0xFF, 0xFF, 0xFF, 0xFF);
   SDL_RenderDrawLine(screen::screenatt.ren, Old.x, Old.y, Current.x, Current.y);
+  // Reset the draw color to black so the next clearscreen() call works correctly.
+  SDL_SetRenderDrawColor(screen::screenatt.ren, 0x00, 0x00, 0x00, 0xFF);
 }
 /*****************************************************************************/
 void clsScreen::setClips() {
